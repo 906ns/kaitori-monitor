@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>カイトリショウテン価格監視</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: white;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .status-bar {
+            background: white;
+            padding: 15px 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.active {
+            background: #10b981;
+        }
+
+        .status-dot.inactive {
+            background: #ef4444;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .card {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .card h2 {
+            margin-bottom: 20px;
+            color: #333;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #e5e7eb;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+
+        .btn-secondary {
+            background: #6b7280;
+            color: white;
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+
+        .btn-secondary:hover {
+            background: #4b5563;
+        }
+
+        .items-list {
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .item {
+            padding: 15px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            transition: all 0.3s;
+        }
+
+        .item:hover {
+            border-color: #667eea;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
+        }
+
+        .item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 10px;
+        }
+
+        .item-name {
+            font-weight: 600;
+            color: #333;
+            font-size: 16px;
+            flex: 1;
+        }
+
+        .item-price {
+            font-size: 20px;
+            font-weight: 700;
+            color: #667eea;
+        }
+
+        .item-details {
+            display: flex;
+            gap: 15px;
+            font-size: 13px;
+            color: #6b7280;
+            margin-bottom: 10px;
+        }
+
+        .item-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .logs-container {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .log-entry {
+            padding: 12px;
+            border-left: 4px solid #e5e7eb;
+            margin-bottom: 8px;
+            background: #f9fafb;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+
+        .log-entry.info {
+            border-left-color: #3b82f6;
+        }
+
+        .log-entry.price_change {
+            border-left-color: #10b981;
+        }
+
+        .log-entry.error {
+            border-left-color: #ef4444;
+        }
+
+        .log-time {
+            color: #6b7280;
+            font-size: 11px;
+            margin-bottom: 4px;
+        }
+
+        .log-message {
+            color: #333;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #9ca3af;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f4f6;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .full-width {
+            grid-column: 1 / -1;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+
+            h1 {
+                font-size: 1.8em;
+            }
+
+            .status-bar {
+                flex-direction: column;
+                gap: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏪 カイトリショウテン価格監視</h1>
+
+        <div class="status-bar">
+            <div class="status-indicator">
+                <div class="status-dot active" id="statusDot"></div>
+                <span id="statusText">監視中...</span>
+            </div>
+            <div style="font-size: 14px; color: #6b7280;">
+                チェック間隔: <strong id="checkInterval">60秒</strong>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="card">
+                <h2>📝 商品追加</h2>
+                <div class="input-group">
+                    <input type="text" id="janInput" placeholder="JANコードを入力 (例: 4902370553031)">
+                    <button class="btn-primary" onclick="addItem()">追加</button>
+                </div>
+                <div class="input-group">
+                    <input type="text" id="urlInput" placeholder="商品URLを入力 (オプション)">
+                </div>
+                <div id="addMessage" style="margin-top: 10px; font-size: 14px;"></div>
+            </div>
+
+            <div class="card">
+                <h2>📊 監視中の商品 (<span id="itemCount">0</span>)</h2>
+                <div class="items-list" id="itemsList">
+                    <div class="empty-state">まだ商品が追加されていません</div>
+                </div>
+            </div>
+
+            <div class="card full-width">
+                <h2>📋 ログ</h2>
+                <div class="logs-container" id="logsContainer">
+                    <div class="empty-state">ログがありません</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '';
+
+        // 初期化
+        async function init() {
+            await Promise.all([
+                loadItems(),
+                loadLogs(),
+                loadStatus()
+            ]);
+
+            // 定期的に更新
+            setInterval(loadItems, 10000); // 10秒ごとに商品リスト更新
+            setInterval(loadLogs, 5000);   // 5秒ごとにログ更新
+        }
+
+        // ステータス取得
+        async function loadStatus() {
+            try {
+                const response = await fetch(`${API_BASE}/api/status`);
+                const data = await response.json();
+                
+                const statusDot = document.getElementById('statusDot');
+                const statusText = document.getElementById('statusText');
+                
+                if (data.is_running) {
+                    statusDot.className = 'status-dot active';
+                    statusText.textContent = '監視中...';
+                } else {
+                    statusDot.className = 'status-dot inactive';
+                    statusText.textContent = '停止中';
+                }
+                
+                document.getElementById('checkInterval').textContent = `${data.check_interval}秒`;
+            } catch (error) {
+                console.error('ステータス取得エラー:', error);
+            }
+        }
+
+        // 商品リスト取得
+        async function loadItems() {
+            try {
+                const response = await fetch(`${API_BASE}/api/items`);
+                const data = await response.json();
+                
+                const itemsList = document.getElementById('itemsList');
+                const itemCount = document.getElementById('itemCount');
+                
+                itemCount.textContent = data.items.length;
+                
+                if (data.items.length === 0) {
+                    itemsList.innerHTML = '<div class="empty-state">まだ商品が追加されていません</div>';
+                    return;
+                }
+                
+                itemsList.innerHTML = data.items.map(item => `
+                    <div class="item">
+                        <div class="item-header">
+                            <div class="item-name">${escapeHtml(item.product_name || 'JAN: ' + item.jan)}</div>
+                            <div class="item-price">¥${(item.current_price || 0).toLocaleString()}</div>
+                        </div>
+                        <div class="item-details">
+                            <span>JAN: ${item.jan}</span>
+                            <span>最終確認: ${formatDate(item.last_checked)}</span>
+                        </div>
+                        <div class="item-actions">
+                            <button class="btn-secondary" onclick="checkItemNow('${item.jan}')">今すぐチェック</button>
+                            <button class="btn-danger" onclick="removeItem('${item.jan}')">削除</button>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('商品リスト取得エラー:', error);
+            }
+        }
+
+        // ログ取得
+        async function loadLogs() {
+            try {
+                const response = await fetch(`${API_BASE}/api/logs?limit=50`);
+                const data = await response.json();
+                
+                const logsContainer = document.getElementById('logsContainer');
+                
+                if (data.logs.length === 0) {
+                    logsContainer.innerHTML = '<div class="empty-state">ログがありません</div>';
+                    return;
+                }
+                
+                logsContainer.innerHTML = data.logs.map(log => `
+                    <div class="log-entry ${log.log_type}">
+                        <div class="log-time">${formatDate(log.created_at)}</div>
+                        <div class="log-message">
+                            <strong>${escapeHtml(log.product_name || 'JAN: ' + log.jan)}</strong>: ${escapeHtml(log.message)}
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('ログ取得エラー:', error);
+            }
+        }
+
+        // 商品追加
+        async function addItem() {
+            const janInput = document.getElementById('janInput');
+            const urlInput = document.getElementById('urlInput');
+            const message = document.getElementById('addMessage');
+            const jan = janInput.value.trim();
+            
+            if (!jan) {
+                message.innerHTML = '<span style="color: #ef4444;">JANコードを入力してください</span>';
+                return;
+            }
+            
+            message.innerHTML = '<div class="loading"></div> 商品情報を取得中...';
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/items/add`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        jan: jan,
+                        url: urlInput.value.trim() || null
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    message.innerHTML = '<span style="color: #10b981;">✓ 追加しました!</span>';
+                    janInput.value = '';
+                    urlInput.value = '';
+                    await loadItems();
+                    await loadLogs();
+                    setTimeout(() => message.innerHTML = '', 3000);
+                } else {
+                    message.innerHTML = `<span style="color: #ef4444;">エラー: ${data.detail}</span>`;
+                }
+            } catch (error) {
+                message.innerHTML = '<span style="color: #ef4444;">追加に失敗しました</span>';
+                console.error('追加エラー:', error);
+            }
+        }
+
+        // 商品削除
+        async function removeItem(jan) {
+            if (!confirm('この商品の監視を停止しますか?')) return;
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/items/remove`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({jan: jan})
+                });
+                
+                if (response.ok) {
+                    await loadItems();
+                    await loadLogs();
+                }
+            } catch (error) {
+                console.error('削除エラー:', error);
+            }
+        }
+
+        // 手動チェック
+        async function checkItemNow(jan) {
+            try {
+                const response = await fetch(`${API_BASE}/api/items/check/${jan}`, {
+                    method: 'POST'
+                });
+                
+                if (response.ok) {
+                    await loadItems();
+                    await loadLogs();
+                    alert('チェックが完了しました');
+                }
+            } catch (error) {
+                console.error('チェックエラー:', error);
+                alert('チェックに失敗しました');
+            }
+        }
+
+        // ユーティリティ
+        function formatDate(dateStr) {
+            if (!dateStr) return '-';
+            const date = new Date(dateStr);
+            return date.toLocaleString('ja-JP');
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Enterキーで追加
+        document.addEventListener('DOMContentLoaded', () => {
+            const janInput = document.getElementById('janInput');
+            janInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') addItem();
+            });
+            
+            init();
+        });
+    </script>
+</body>
+</html>
